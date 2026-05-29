@@ -1,0 +1,1391 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1a0a0a">
+    <title>گربه و موش - Cat & Mouse Chase</title>
+    <style>
+        :root {
+            --bg: #1a0a0a;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        body {
+            background: var(--bg);
+            overflow: hidden;
+            touch-action: none;
+            font-family: 'Segoe UI', 'Vazirmatn', Tahoma, sans-serif;
+            height: 100dvh;
+            width: 100vw;
+            position: fixed;
+            top: 0;
+            left: 0;
+            cursor: none;
+        }
+
+        canvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #score-display {
+            position: absolute;
+            top: max(16px, env(safe-area-inset-top, 16px));
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 2px solid rgba(255, 215, 0, 0.5);
+            border-radius: 50px;
+            padding: 10px 28px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: #ffd700;
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            min-width: 140px;
+            justify-content: center;
+        }
+        #score-display.danger {
+            border-color: #ff4444;
+            animation: dangerPulse 0.5s ease-in-out infinite;
+        }
+        @keyframes dangerPulse {
+            0%,
+            100% {
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(255, 0, 0, 0.5);
+            }
+            50% {
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 45px rgba(255, 0, 0, 0.9);
+            }
+        }
+        #score-value {
+            font-size: 2rem;
+            font-weight: 900;
+            min-width: 50px;
+            text-align: center;
+            color: #fff;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.7);
+            transition: transform 0.15s ease;
+        }
+        #score-value.pulse {
+            transform: scale(1.4);
+        }
+        .score-icon {
+            font-size: 1.6rem;
+        }
+
+        #bonus-pop {
+            position: absolute;
+            pointer-events: none;
+            color: #ffd700;
+            font-weight: 900;
+            font-size: 1.5rem;
+            text-shadow: 0 0 15px rgba(255, 215, 0, 0.9);
+            animation: floatUp 1.2s ease-out forwards;
+            z-index: 20;
+            white-space: nowrap;
+        }
+        @keyframes floatUp {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-90px) scale(1.6);
+            }
+        }
+
+        #overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            pointer-events: all;
+            z-index: 30;
+            background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.9) 100%);
+            transition: opacity 0.5s ease;
+        }
+        #overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        #overlay-title {
+            font-size: clamp(2rem, 6vw, 4rem);
+            font-weight: 900;
+            color: #ffd700;
+            text-shadow: 0 0 40px rgba(255, 180, 0, 0.8), 0 4px 8px rgba(0, 0, 0, 0.6);
+            margin-bottom: 8px;
+            letter-spacing: 3px;
+            text-align: center;
+            line-height: 1.2;
+        }
+        #overlay-subtitle {
+            color: #e0c070;
+            font-size: 1rem;
+            margin-bottom: 32px;
+            text-align: center;
+            opacity: 0.85;
+            letter-spacing: 1px;
+        }
+        #overlay-btn {
+            pointer-events: all;
+            background: linear-gradient(135deg, #ff8c00, #e65c00);
+            color: #fff;
+            border: none;
+            padding: 16px 48px;
+            font-size: 1.3rem;
+            font-weight: 700;
+            border-radius: 50px;
+            cursor: pointer;
+            letter-spacing: 2px;
+            box-shadow: 0 8px 30px rgba(255, 100, 0, 0.5);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        #overlay-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 14px 40px rgba(255, 120, 0, 0.7);
+        }
+        #overlay-btn:active {
+            transform: scale(0.95);
+            box-shadow: 0 4px 15px rgba(255, 80, 0, 0.5);
+        }
+        #overlay-btn::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, transparent 60%);
+            animation: btnShine 3s infinite;
+        }
+        @keyframes btnShine {
+            0%,
+            100% {
+                transform: translate(-20%, -20%);
+            }
+            50% {
+                transform: translate(20%, 20%);
+            }
+        }
+        #overlay-score {
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: #fff;
+            margin-top: 16px;
+            text-shadow: 0 0 30px rgba(255, 215, 0, 0.8);
+            text-align: center;
+        }
+        #overlay-highscore {
+            color: #ffd700;
+            font-size: 1.1rem;
+            margin-top: 4px;
+            opacity: 0.9;
+        }
+        #overlay-emoji {
+            font-size: 5rem;
+            animation: bounceEmoji 0.8s ease-in-out infinite;
+            margin-bottom: 16px;
+        }
+        @keyframes bounceEmoji {
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-25px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <div id="ui-layer">
+        <div id="score-display">
+            <span class="score-icon">⏱️</span>
+            <span id="score-value">0</span>
+            <span style="font-size:0.9rem;opacity:0.7;">ثانیه</span>
+        </div>
+    </div>
+    <div id="overlay">
+        <div id="overlay-emoji">🐱🐭</div>
+        <div id="overlay-title">گربه و موش</div>
+        <div id="overlay-subtitle">موش رو با لمس صفحه از گربه فراری بده!</div>
+        <button id="overlay-btn">🎮 شروع بازی</button>
+        <div id="overlay-score" style="display:none;"></div>
+        <div id="overlay-highscore" style="display:none;"></div>
+    </div>
+
+    <script>
+        (function() {
+            // ─────────────────────────────────────
+            // DOM Elements
+            // ─────────────────────────────────────
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+            const scoreDisplay = document.getElementById('score-display');
+            const scoreValueEl = document.getElementById('score-value');
+            const overlay = document.getElementById('overlay');
+            const overlayTitle = document.getElementById('overlay-title');
+            const overlaySubtitle = document.getElementById('overlay-subtitle');
+            const overlayBtn = document.getElementById('overlay-btn');
+            const overlayScore = document.getElementById('overlay-score');
+            const overlayHighscore = document.getElementById('overlay-highscore');
+            const overlayEmoji = document.getElementById('overlay-emoji');
+            const uiLayer = document.getElementById('ui-layer');
+
+            // ─────────────────────────────────────
+            // Canvas Setup
+            // ─────────────────────────────────────
+            let W, H;
+
+            function resizeCanvas() {
+                const dpr = Math.min(window.devicePixelRatio || 1, 2);
+                W = window.innerWidth;
+                H = window.innerHeight;
+                canvas.width = W * dpr;
+                canvas.height = H * dpr;
+                canvas.style.width = W + 'px';
+                canvas.style.height = H + 'px';
+                ctx.setTransform(1, 0, 0, 1, 0, 0);
+                ctx.scale(dpr, dpr);
+            }
+            window.addEventListener('resize', resizeCanvas);
+            window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 300));
+            resizeCanvas();
+
+            // ─────────────────────────────────────
+            // Audio Engine (Web Audio API)
+            // ─────────────────────────────────────
+            let audioCtx = null;
+
+            function initAudio() {
+                if (!audioCtx) {
+                    audioCtx = new(window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+            }
+
+            function playTone(freq, duration, type = 'sine', vol = 0.3, freqEnd = null, noiseAmount = 0) {
+                if (!audioCtx) return;
+                try {
+                    const t = audioCtx.currentTime;
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, t);
+                    if (freqEnd) osc.frequency.linearRampToValueAtTime(freqEnd, t + duration);
+                    gain.gain.setValueAtTime(vol, t);
+                    gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
+                    if (noiseAmount > 0 && type === 'sine') {
+                        const noise = audioCtx.createOscillator();
+                        noise.type = 'triangle';
+                        noise.frequency.setValueAtTime(freq * 3.7, t);
+                        const noiseGain = audioCtx.createGain();
+                        noiseGain.gain.setValueAtTime(vol * noiseAmount, t);
+                        noiseGain.gain.exponentialRampToValueAtTime(0.001, t + duration * 0.7);
+                        noise.connect(noiseGain);
+                        noiseGain.connect(audioCtx.destination);
+                        noise.start(t);
+                        noise.stop(t + duration);
+                    }
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(t);
+                    osc.stop(t + duration);
+                } catch (e) { /* silent */ }
+            }
+
+            function sfxMeow() { playTone(350, 0.35, 'sawtooth', 0.25, 180, 0.4);
+                playTone(280, 0.3, 'sawtooth', 0.2, 140, 0.3); }
+
+            function sfxSqueak() { playTone(1800, 0.1, 'sine', 0.2, 2200, 0.5);
+                playTone(1600, 0.08, 'sine', 0.15, 2000, 0.3); }
+
+            function sfxCheese() { playTone(880, 0.12, 'triangle', 0.35, 1100, 0);
+                setTimeout(() => playTone(1320, 0.15, 'triangle', 0.35, 1650, 0), 120); }
+
+            function sfxNearMiss() {
+                playTone(200, 0.18, 'sawtooth', 0.2, 80, 0.6);
+                playTone(150, 0.15, 'square', 0.1, 60, 0.4);
+            }
+
+            function sfxGameOver() {
+                playTone(400, 0.25, 'sawtooth', 0.35, 80, 0.5);
+                setTimeout(() => playTone(200, 0.4, 'sawtooth', 0.35, 40, 0.5), 250);
+                setTimeout(() => playTone(100, 0.5, 'square', 0.3, 30, 0.4), 500);
+            }
+
+            function sfxStart() {
+                playTone(440, 0.1, 'triangle', 0.3, 550, 0);
+                setTimeout(() => playTone(660, 0.12, 'triangle', 0.3, 880, 0), 100);
+                setTimeout(() => playTone(880, 0.18, 'triangle', 0.35, 1100, 0), 200);
+            }
+
+            function sfxPowerUp() {
+                playTone(600, 0.08, 'triangle', 0.4, 1200, 0);
+                setTimeout(() => playTone(900, 0.08, 'triangle', 0.4, 1800, 0), 80);
+                setTimeout(() => playTone(1200, 0.12, 'triangle', 0.4, 2400, 0), 160);
+            }
+
+            // ─────────────────────────────────────
+            // Particle System
+            // ─────────────────────────────────────
+            const particles = [];
+
+            function spawnParticles(x, y, count, color, speed = 3, life = 0.7, size = 3) {
+                for (let i = 0; i < count; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const spd = speed * (0.5 + Math.random());
+                    particles.push({
+                        x,
+                        y,
+                        vx: Math.cos(angle) * spd,
+                        vy: Math.sin(angle) * spd,
+                        life,
+                        maxLife: life,
+                        color,
+                        size: size * (0.5 + Math.random()),
+                    });
+                }
+                if (particles.length > 300) particles.splice(0, particles.length - 300);
+            }
+
+            function updateParticles(dt) {
+                for (let i = particles.length - 1; i >= 0; i--) {
+                    const p = particles[i];
+                    p.x += p.vx * dt * 60;
+                    p.y += p.vy * dt * 60;
+                    p.life -= dt;
+                    if (p.life <= 0) particles.splice(i, 1);
+                }
+            }
+
+            function drawParticles(ctx) {
+                for (const p of particles) {
+                    const alpha = p.life / p.maxLife;
+                    const size = p.size * alpha;
+                    ctx.save();
+                    ctx.globalAlpha = alpha;
+                    ctx.fillStyle = p.color;
+                    ctx.shadowColor = p.color;
+                    ctx.shadowBlur = size * 2;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            }
+
+            // ─────────────────────────────────────
+            // Cheese Collectible
+            // ─────────────────────────────────────
+            const cheeses = [];
+            const MAX_CHEESES = 4;
+            let cheeseSpawnTimer = 0;
+            const CHEESE_SPAWN_INTERVAL = 4.5;
+
+            function spawnCheese() {
+                if (cheeses.length >= MAX_CHEESES) return;
+                const margin = 80;
+                const x = margin + Math.random() * (W - margin * 2);
+                const y = margin + Math.random() * (H - margin * 2);
+                cheeses.push({
+                    x,
+                    y,
+                    radius: 16 + Math.random() * 10,
+                    glowPhase: Math.random() * Math.PI * 2,
+                    life: 9 + Math.random() * 6,
+                    maxLife: 15,
+                });
+            }
+
+            function updateCheeses(dt) {
+                cheeseSpawnTimer += dt;
+                if (cheeseSpawnTimer >= CHEESE_SPAWN_INTERVAL) {
+                    cheeseSpawnTimer = 0;
+                    spawnCheese();
+                }
+                for (let i = cheeses.length - 1; i >= 0; i--) {
+                    cheeses[i].life -= dt;
+                    if (cheeses[i].life <= 0) {
+                        spawnParticles(cheeses[i].x, cheeses[i].y, 10, '#ffd700', 1.5, 0.5, 2);
+                        cheeses.splice(i, 1);
+                    }
+                }
+            }
+
+            function drawCheese(ctx, cheese) {
+                const { x, y, radius, glowPhase, life, maxLife } = cheese;
+                const alpha = Math.min(1, life / (maxLife * 0.3));
+                const glowIntensity = 0.5 + Math.sin(glowPhase + performance.now() * 0.004) * 0.3;
+                ctx.save();
+                ctx.globalAlpha = alpha;
+                // Glow
+                const glow = ctx.createRadialGradient(x, y, radius * 0.3, x, y, radius * 2.5);
+                glow.addColorStop(0, `rgba(255,215,0,${0.9*glowIntensity})`);
+                glow.addColorStop(0.5, `rgba(255,180,0,${0.4*glowIntensity})`);
+                glow.addColorStop(1, 'rgba(255,150,0,0)');
+                ctx.fillStyle = glow;
+                ctx.beginPath();
+                ctx.arc(x, y, radius * 2.5, 0, Math.PI * 2);
+                ctx.fill();
+                // Cheese wedge body
+                ctx.fillStyle = '#ffc107';
+                ctx.shadowColor = '#ffd700';
+                ctx.shadowBlur = 14 * glowIntensity;
+                ctx.beginPath();
+                ctx.moveTo(x, y - radius);
+                ctx.lineTo(x + radius * 0.9, y + radius * 0.6);
+                ctx.lineTo(x - radius * 0.9, y + radius * 0.6);
+                ctx.closePath();
+                ctx.fill();
+                // Holes
+                ctx.fillStyle = '#e6a000';
+                ctx.shadowBlur = 0;
+                const holes = [
+                    { dx: 0.15, dy: -0.1, r: radius * 0.22 },
+                    { dx: -0.2, dy: 0.25, r: radius * 0.16 },
+                    { dx: 0.25, dy: 0.3, r: radius * 0.12 },
+                ];
+                for (const h of holes) {
+                    ctx.beginPath();
+                    ctx.arc(x + h.dx * radius, y + h.dy * radius, h.r, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                // Highlight
+                ctx.fillStyle = 'rgba(255,255,200,0.5)';
+                ctx.beginPath();
+                ctx.arc(x - radius * 0.1, y - radius * 0.3, radius * 0.15, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            // ─────────────────────────────────────
+            // Draw Cat (detailed)
+            // ─────────────────────────────────────
+            function drawCat(ctx, x, y, angle, scale = 1, eyeGlow = 0) {
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.rotate(angle);
+                const s = scale;
+                // Shadow
+                ctx.fillStyle = 'rgba(0,0,0,0.35)';
+                ctx.beginPath();
+                ctx.ellipse(0, 8 * s, 22 * s, 6 * s, 0, 0, Math.PI * 2);
+                ctx.fill();
+                // Tail
+                ctx.strokeStyle = '#d4782a';
+                ctx.lineWidth = 7 * s;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(-16 * s, 4 * s);
+                ctx.quadraticCurveTo(-30 * s, -18 * s, -22 * s, -30 * s);
+                ctx.stroke();
+                ctx.strokeStyle = '#b85c10';
+                ctx.lineWidth = 3 * s;
+                ctx.beginPath();
+                ctx.moveTo(-18 * s, 2 * s);
+                ctx.quadraticCurveTo(-28 * s, -15 * s, -21 * s, -27 * s);
+                ctx.stroke();
+                // Body
+                const bodyGrad = ctx.createLinearGradient(0, -15 * s, 0, 15 * s);
+                bodyGrad.addColorStop(0, '#f4983a');
+                bodyGrad.addColorStop(0.6, '#e07a20');
+                bodyGrad.addColorStop(1, '#c86818');
+                ctx.fillStyle = bodyGrad;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 20 * s, 13 * s, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#b85c10';
+                ctx.lineWidth = 1.5 * s;
+                ctx.stroke();
+                // Stripes on body
+                ctx.strokeStyle = 'rgba(180,80,20,0.45)';
+                ctx.lineWidth = 2.5 * s;
+                for (let i = -1; i <= 1; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(i * 7 * s, -9 * s);
+                    ctx.lineTo(i * 7 * s + 3 * s, -4 * s);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(i * 7 * s - 1 * s, 2 * s);
+                    ctx.lineTo(i * 7 * s + 2 * s, 8 * s);
+                    ctx.stroke();
+                }
+                // Head
+                const headGrad = ctx.createRadialGradient(16 * s, -3 * s, 2 * s, 14 * s, 0, 13 * s);
+                headGrad.addColorStop(0, '#faaa50');
+                headGrad.addColorStop(1, '#e07820');
+                ctx.fillStyle = headGrad;
+                ctx.beginPath();
+                ctx.arc(14 * s, -2 * s, 12 * s, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#b85c10';
+                ctx.lineWidth = 1.5 * s;
+                ctx.stroke();
+                // Ears
+                ctx.fillStyle = '#e07820';
+                ctx.beginPath();
+                ctx.moveTo(6 * s, -11 * s);
+                ctx.lineTo(14 * s, -22 * s);
+                ctx.lineTo(20 * s, -9 * s);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(12 * s, -10 * s);
+                ctx.lineTo(18 * s, -20 * s);
+                ctx.lineTo(22 * s, -8 * s);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                // Inner ears
+                ctx.fillStyle = '#f8b8b8';
+                ctx.beginPath();
+                ctx.moveTo(9 * s, -11 * s);
+                ctx.lineTo(14 * s, -19 * s);
+                ctx.lineTo(17 * s, -10 * s);
+                ctx.closePath();
+                ctx.fill();
+                ctx.beginPath();
+                ctx.moveTo(15 * s, -10 * s);
+                ctx.lineTo(18 * s, -17 * s);
+                ctx.lineTo(20 * s, -9 * s);
+                ctx.closePath();
+                ctx.fill();
+                // Eyes
+                const eyeY = -4 * s;
+                // Left eye
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(10 * s, eyeY, 4.5 * s, 0, Math.PI * 2);
+                ctx.fill();
+                // Right eye
+                ctx.beginPath();
+                ctx.arc(19 * s, eyeY, 4.5 * s, 0, Math.PI * 2);
+                ctx.fill();
+                // Iris
+                const irisColor = eyeGlow > 0.5 ? '#ff3333' : '#4a8c2a';
+                ctx.fillStyle = irisColor;
+                ctx.shadowColor = eyeGlow > 0.5 ? '#ff0000' : '#4a8c2a';
+                ctx.shadowBlur = eyeGlow * 18;
+                ctx.beginPath();
+                ctx.arc(10 * s, eyeY, 3.2 * s, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(19 * s, eyeY, 3.2 * s, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                // Pupils
+                ctx.fillStyle = '#000';
+                ctx.beginPath();
+                ctx.ellipse(10 * s, eyeY, 1.2 * s, 2.8 * s, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.ellipse(19 * s, eyeY, 1.2 * s, 2.8 * s, 0, 0, Math.PI * 2);
+                ctx.fill();
+                // Eye shine
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(11.5 * s, eyeY - 1.5 * s, 1.3 * s, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(20.5 * s, eyeY - 1.5 * s, 1.3 * s, 0, Math.PI * 2);
+                ctx.fill();
+                // Nose
+                ctx.fillStyle = '#f88888';
+                ctx.beginPath();
+                ctx.moveTo(13.5 * s, 2 * s);
+                ctx.lineTo(16.5 * s, 2 * s);
+                ctx.lineTo(15 * s, 5 * s);
+                ctx.closePath();
+                ctx.fill();
+                // Mouth
+                ctx.strokeStyle = '#555';
+                ctx.lineWidth = 0.8 * s;
+                ctx.beginPath();
+                ctx.moveTo(15 * s, 5 * s);
+                ctx.quadraticCurveTo(12 * s, 8 * s, 9 * s, 7 * s);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(15 * s, 5 * s);
+                ctx.quadraticCurveTo(18 * s, 8 * s, 21 * s, 7 * s);
+                ctx.stroke();
+                // Whiskers
+                ctx.strokeStyle = '#ddd';
+                ctx.lineWidth = 0.6 * s;
+                const whiskerBase = [
+                    { sx: 6, sy: 1, ex: -12, ey: -3 },
+                    { sx: 6, sy: 2.5, ex: -13, ey: 4 },
+                    { sx: 6, sy: 4, ex: -10, ey: 9 },
+                    { sx: 22, sy: 1, ex: 36, ey: -3 },
+                    { sx: 22, sy: 2.5, ex: 37, ey: 4 },
+                    { sx: 22, sy: 4, ex: 34, ey: 9 },
+                ];
+                for (const w of whiskerBase) {
+                    ctx.beginPath();
+                    ctx.moveTo(w.sx * s, w.sy * s);
+                    ctx.lineTo(w.ex * s, w.ey * s);
+                    ctx.stroke();
+                }
+                // Front paws
+                ctx.fillStyle = '#f4983a';
+                ctx.beginPath();
+                ctx.ellipse(10 * s, 12 * s, 5 * s, 3.5 * s, 0.2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#b85c10';
+                ctx.lineWidth = 1 * s;
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.ellipse(18 * s, 11 * s, 5 * s, 3.5 * s, -0.1, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                // Paw details
+                ctx.fillStyle = '#f8c8a0';
+                for (let px = 8; px <= 12; px += 2) {
+                    ctx.beginPath();
+                    ctx.arc(px * s, 13.5 * s, 1.2 * s, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                for (let px = 16; px <= 20; px += 2) {
+                    ctx.beginPath();
+                    ctx.arc(px * s, 12.5 * s, 1.2 * s, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+
+            // ─────────────────────────────────────
+            // Draw Mouse (detailed)
+            // ─────────────────────────────────────
+            function drawMouse(ctx, x, y, angle, scale = 1) {
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.rotate(angle);
+                const s = scale;
+                // Shadow
+                ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                ctx.beginPath();
+                ctx.ellipse(0, 4 * s, 10 * s, 3 * s, 0, 0, Math.PI * 2);
+                ctx.fill();
+                // Tail
+                ctx.strokeStyle = '#f8a8b8';
+                ctx.lineWidth = 2.2 * s;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(-8 * s, 2 * s);
+                ctx.quadraticCurveTo(-16 * s, -8 * s, -10 * s, -16 * s);
+                ctx.quadraticCurveTo(-4 * s, -22 * s, 2 * s, -14 * s);
+                ctx.stroke();
+                // Body
+                const bodyGrad = ctx.createLinearGradient(0, -7 * s, 0, 7 * s);
+                bodyGrad.addColorStop(0, '#c8c8c8');
+                bodyGrad.addColorStop(0.5, '#a8a8a8');
+                bodyGrad.addColorStop(1, '#888888');
+                ctx.fillStyle = bodyGrad;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 9 * s, 6.5 * s, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#777';
+                ctx.lineWidth = 1 * s;
+                ctx.stroke();
+                // Belly
+                ctx.fillStyle = '#e8e8e8';
+                ctx.beginPath();
+                ctx.ellipse(0, 2 * s, 5 * s, 3.5 * s, 0, 0, Math.PI * 2);
+                ctx.fill();
+                // Head
+                const headGrad = ctx.createRadialGradient(7 * s, -1 * s, 1 * s, 6 * s, 0, 6 * s);
+                headGrad.addColorStop(0, '#d8d8d8');
+                headGrad.addColorStop(1, '#a0a0a0');
+                ctx.fillStyle = headGrad;
+                ctx.beginPath();
+                ctx.arc(6 * s, -1 * s, 5.5 * s, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#777';
+                ctx.lineWidth = 0.8 * s;
+                ctx.stroke();
+                // Ears
+                ctx.fillStyle = '#b8b8b8';
+                ctx.beginPath();
+                ctx.arc(3 * s, -6 * s, 3.2 * s, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(9 * s, -6 * s, 3.2 * s, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                // Inner ears
+                ctx.fillStyle = '#f8b8c8';
+                ctx.beginPath();
+                ctx.arc(3 * s, -6 * s, 2 * s, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(9 * s, -6 * s, 2 * s, 0, Math.PI * 2);
+                ctx.fill();
+                // Eyes
+                ctx.fillStyle = '#111';
+                ctx.beginPath();
+                ctx.arc(4.5 * s, -1.5 * s, 1.4 * s, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(8.5 * s, -1.5 * s, 1.4 * s, 0, Math.PI * 2);
+                ctx.fill();
+                // Eye shine
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(5 * s, -2 * s, 0.55 * s, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(9 * s, -2 * s, 0.55 * s, 0, Math.PI * 2);
+                ctx.fill();
+                // Nose
+                ctx.fillStyle = '#ff9999';
+                ctx.beginPath();
+                ctx.arc(10.5 * s, 0.5 * s, 1.2 * s, 0, Math.PI * 2);
+                ctx.fill();
+                // Whiskers
+                ctx.strokeStyle = '#ccc';
+                ctx.lineWidth = 0.4 * s;
+                for (let wy = -1; wy <= 1.5; wy += 1.2) {
+                    ctx.beginPath();
+                    ctx.moveTo(9 * s, wy * s);
+                    ctx.lineTo(16 * s, (wy - 2) * s);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(9 * s, wy * s);
+                    ctx.lineTo(16 * s, (wy + 2) * s);
+                    ctx.stroke();
+                }
+                // Small paws
+                ctx.fillStyle = '#c8c8c8';
+                ctx.beginPath();
+                ctx.ellipse(4 * s, 6 * s, 2.5 * s, 1.8 * s, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.ellipse(8 * s, 5.5 * s, 2.5 * s, 1.8 * s, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            // ─────────────────────────────────────
+            // Draw Background
+            // ─────────────────────────────────────
+            function drawBackground(ctx) {
+                // Warm floor gradient
+                const floorGrad = ctx.createRadialGradient(W / 2, H / 2, W * 0.1, W / 2, H / 2, W * 1.2);
+                floorGrad.addColorStop(0, '#f5e6d3');
+                floorGrad.addColorStop(0.5, '#e8d5c0');
+                floorGrad.addColorStop(1, '#c4a882');
+                ctx.fillStyle = floorGrad;
+                ctx.fillRect(0, 0, W, H);
+                // Tile lines
+                const tileSize = 80;
+                ctx.strokeStyle = 'rgba(180,150,120,0.2)';
+                ctx.lineWidth = 1;
+                for (let x = tileSize; x < W; x += tileSize) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, H);
+                    ctx.stroke();
+                }
+                for (let y = tileSize; y < H; y += tileSize) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(W, y);
+                    ctx.stroke();
+                }
+                // Subtle vignette
+                const vignette = ctx.createRadialGradient(W / 2, H / 2, W * 0.55, W / 2, H / 2, W * 0.9);
+                vignette.addColorStop(0, 'rgba(0,0,0,0)');
+                vignette.addColorStop(1, 'rgba(0,0,0,0.45)');
+                ctx.fillStyle = vignette;
+                ctx.fillRect(0, 0, W, H);
+                // Baseboard at bottom
+                ctx.fillStyle = '#8b6f5e';
+                ctx.fillRect(0, H - 18, W, 18);
+                ctx.fillStyle = '#a0846e';
+                ctx.fillRect(0, H - 18, W, 3);
+                // Some furniture shadows
+                ctx.fillStyle = 'rgba(0,0,0,0.08)';
+                ctx.fillRect(0, 0, 35, H);
+                ctx.fillRect(W - 35, 0, 35, H);
+                ctx.fillRect(0, 0, W, 25);
+            }
+
+            // ─────────────────────────────────────
+            // Game State
+            // ─────────────────────────────────────
+            const STATE = { IDLE: 'idle', PLAYING: 'playing', OVER: 'over' };
+            let gameState = STATE.IDLE;
+            let score = 0;
+            let highScore = 0;
+            let gameTime = 0;
+            let difficulty = 1;
+            let catSpeedBoost = 0;
+            let mouseSpeedBoost = 0;
+            let mouseSpeedBoostTimer = 0;
+            let shakeAmount = 0;
+            let dangerLevel = 0;
+            let lastSqueakTime = 0;
+            let nearMissCooldown = 0;
+
+            // Load high score
+            try {
+                const saved = localStorage.getItem('catMouseHighScore');
+                if (saved) highScore = parseInt(saved) || 0;
+            } catch (e) { highScore = 0; }
+
+            // Characters
+            let mouse = { x: 0, y: 0, vx: 0, vy: 0, targetX: 0, targetY: 0, angle: 0, speed: 0, hasTarget: false };
+            let cat = { x: 0, y: 0, vx: 0, vy: 0, angle: 0, speed: 0, pauseTimer: 0, isPaused: false, pounceCooldown: 0 };
+
+            function resetPositions() {
+                mouse.x = W * 0.4;
+                mouse.y = H * 0.5;
+                mouse.vx = 0;
+                mouse.vy = 0;
+                mouse.targetX = mouse.x;
+                mouse.targetY = mouse.y;
+                mouse.angle = 0;
+                mouse.speed = 0;
+                mouse.hasTarget = false;
+                cat.x = W * 0.7;
+                cat.y = H * 0.35;
+                cat.vx = 0;
+                cat.vy = 0;
+                cat.angle = Math.PI;
+                cat.speed = 0;
+                cat.pauseTimer = 0;
+                cat.isPaused = false;
+                cat.pounceCooldown = 0;
+                catSpeedBoost = 0;
+                mouseSpeedBoost = 0;
+                mouseSpeedBoostTimer = 0;
+                shakeAmount = 0;
+                dangerLevel = 0;
+                nearMissCooldown = 0;
+                lastSqueakTime = 0;
+                gameTime = 0;
+                score = 0;
+                difficulty = 1;
+                particles.length = 0;
+                cheeses.length = 0;
+                cheeseSpawnTimer = 0;
+            }
+
+            // ─────────────────────────────────────
+            // Input Handling
+            // ─────────────────────────────────────
+            let inputActive = false;
+            let inputX = 0;
+            let inputY = 0;
+
+            function handleInputStart(e) {
+                if (gameState !== STATE.PLAYING) return;
+                e.preventDefault();
+                inputActive = true;
+                const touch = e.touches ? e.touches[0] : e;
+                inputX = touch.clientX;
+                inputY = touch.clientY - 45; // Offset so finger doesn't cover mouse
+                mouse.targetX = inputX;
+                mouse.targetY = inputY;
+                mouse.hasTarget = true;
+            }
+
+            function handleInputMove(e) {
+                if (gameState !== STATE.PLAYING) return;
+                if (!inputActive) return;
+                e.preventDefault();
+                const touch = e.touches ? e.touches[0] : e;
+                inputX = touch.clientX;
+                inputY = touch.clientY - 45;
+                mouse.targetX = inputX;
+                mouse.targetY = inputY;
+                mouse.hasTarget = true;
+            }
+
+            function handleInputEnd(e) {
+                if (gameState !== STATE.PLAYING) return;
+                e.preventDefault();
+                inputActive = false;
+                mouse.hasTarget = false;
+            }
+
+            canvas.addEventListener('touchstart', handleInputStart, { passive: false });
+            canvas.addEventListener('touchmove', handleInputMove, { passive: false });
+            canvas.addEventListener('touchend', handleInputEnd);
+            canvas.addEventListener('touchcancel', handleInputEnd);
+            canvas.addEventListener('mousedown', handleInputStart);
+            canvas.addEventListener('mousemove', (e) => {
+                if (gameState !== STATE.PLAYING) return;
+                if (!inputActive && e.buttons === 0) {
+                    // On desktop, also track mouse movement without click for easier play
+                    inputX = e.clientX;
+                    inputY = e.clientY - 35;
+                    mouse.targetX = inputX;
+                    mouse.targetY = inputY;
+                    mouse.hasTarget = true;
+                }
+                if (inputActive || e.buttons > 0) {
+                    inputX = e.clientX;
+                    inputY = e.clientY - 45;
+                    mouse.targetX = inputX;
+                    mouse.targetY = inputY;
+                    mouse.hasTarget = true;
+                }
+            });
+            canvas.addEventListener('mouseup', handleInputEnd);
+            canvas.addEventListener('mouseleave', () => {
+                if (gameState === STATE.PLAYING && !inputActive) {
+                    mouse.hasTarget = false;
+                }
+                inputActive = false;
+            });
+
+            // ─────────────────────────────────────
+            // UI Helper
+            // ─────────────────────────────────────
+            function showBonusPop(x, y, text) {
+                const el = document.createElement('div');
+                el.id = 'bonus-pop';
+                el.textContent = text;
+                el.style.left = x + 'px';
+                el.style.top = y + 'px';
+                uiLayer.appendChild(el);
+                setTimeout(() => el.remove(), 1300);
+            }
+
+            function updateScoreUI() {
+                scoreValueEl.textContent = Math.floor(score);
+                if (dangerLevel > 0.5) {
+                    scoreDisplay.classList.add('danger');
+                } else {
+                    scoreDisplay.classList.remove('danger');
+                }
+            }
+
+            function pulseScore() {
+                scoreValueEl.classList.add('pulse');
+                setTimeout(() => scoreValueEl.classList.remove('pulse'), 150);
+            }
+
+            // ─────────────────────────────────────
+            // Game Logic
+            // ─────────────────────────────────────
+            function updateGame(dt) {
+                if (gameState !== STATE.PLAYING) return;
+                // Clamp dt
+                const clampedDt = Math.min(dt, 0.1);
+                gameTime += clampedDt;
+                score = gameTime;
+                difficulty = 1 + gameTime * 0.06;
+                if (catSpeedBoost > 0) catSpeedBoost = Math.max(0, catSpeedBoost - clampedDt);
+                if (mouseSpeedBoostTimer > 0) {
+                    mouseSpeedBoostTimer -= clampedDt;
+                    if (mouseSpeedBoostTimer <= 0) mouseSpeedBoost = 0;
+                }
+                if (nearMissCooldown > 0) nearMissCooldown -= clampedDt;
+                shakeAmount = Math.max(0, shakeAmount - clampedDt * 8);
+                dangerLevel = Math.max(0, dangerLevel - clampedDt * 2.5);
+
+                // ── Mouse Movement ─────────────────
+                const mouseBaseSpeed = 320;
+                const mouseCurrentSpeed = mouseBaseSpeed + mouseSpeedBoost;
+                if (mouse.hasTarget) {
+                    const dx = mouse.targetX - mouse.x;
+                    const dy = mouse.targetY - mouse.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist > 2) {
+                        const speed = Math.min(mouseCurrentSpeed, dist / clampedDt * 0.9);
+                        const nx = dx / dist;
+                        const ny = dy / dist;
+                        mouse.vx = nx * speed;
+                        mouse.vy = ny * speed;
+                        mouse.speed = speed;
+                        mouse.angle = Math.atan2(ny, nx);
+                    } else {
+                        mouse.vx *= 0.85;
+                        mouse.vy *= 0.85;
+                        mouse.speed = Math.sqrt(mouse.vx * mouse.vx + mouse.vy * mouse.vy);
+                    }
+                } else {
+                    mouse.vx *= 0.92;
+                    mouse.vy *= 0.92;
+                    mouse.speed = Math.sqrt(mouse.vx * mouse.vx + mouse.vy * mouse.vy);
+                }
+                mouse.x += mouse.vx * clampedDt;
+                mouse.y += mouse.vy * clampedDt;
+                // Clamp to screen
+                mouse.x = Math.max(20, Math.min(W - 20, mouse.x));
+                mouse.y = Math.max(25, Math.min(H - 30, mouse.y));
+                if (mouse.speed > 15) {
+                    if (gameTime - lastSqueakTime > 0.4 && Math.random() < 0.3) {
+                        sfxSqueak();
+                        lastSqueakTime = gameTime;
+                    }
+                }
+
+                // ── Cat AI ─────────────────────────
+                if (cat.pauseTimer > 0) {
+                    cat.pauseTimer -= clampedDt;
+                    cat.isPaused = true;
+                    cat.vx *= 0.9;
+                    cat.vy *= 0.9;
+                } else {
+                    cat.isPaused = false;
+                    if (cat.pauseTimer <= -1.5) cat.pauseTimer = 3 + Math.random() * 5;
+                }
+                if (!cat.isPaused) {
+                    // Predictive chase
+                    const predictTime = 0.3 + difficulty * 0.08;
+                    const predX = mouse.x + mouse.vx * predictTime;
+                    const predY = mouse.y + mouse.vy * predictTime;
+                    const dx = predX - cat.x;
+                    const dy = predY - cat.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const catBaseSpeed = 180 + difficulty * 25 + catSpeedBoost;
+                    const catMaxSpeed = Math.min(catBaseSpeed, 550);
+                    let catSpeed = catMaxSpeed;
+                    // Slow down when far, speed up when close
+                    if (dist > 300) catSpeed *= 0.7;
+                    else if (dist < 80) catSpeed *= 1.25;
+                    if (dist > 1) {
+                        const nx = dx / dist;
+                        const ny = dy / dist;
+                        const accel = 800;
+                        cat.vx += nx * accel * clampedDt;
+                        cat.vy += ny * accel * clampedDt;
+                        const currentSpeed = Math.sqrt(cat.vx * cat.vx + cat.vy * cat.vy);
+                        if (currentSpeed > catSpeed) {
+                            const scale = catSpeed / currentSpeed;
+                            cat.vx *= scale;
+                            cat.vy *= scale;
+                        }
+                        cat.angle = Math.atan2(cat.vy, cat.vx);
+                    }
+                    cat.speed = Math.sqrt(cat.vx * cat.vx + cat.vy * cat.vy);
+                }
+                cat.x += cat.vx * clampedDt;
+                cat.y += cat.vy * clampedDt;
+                cat.x = Math.max(15, Math.min(W - 15, cat.x));
+                cat.y = Math.max(20, Math.min(H - 25, cat.y));
+                if (cat.pounceCooldown > 0) cat.pounceCooldown -= clampedDt;
+
+                // ── Collision Detection ────────────
+                const catchDist = 32;
+                const dxCM = cat.x - mouse.x;
+                const dyCM = cat.y - mouse.y;
+                const distCM = Math.sqrt(dxCM * dxCM + dyCM * dyCM);
+
+                // Near miss detection
+                const nearMissDist = 70;
+                if (distCM < nearMissDist && distCM > catchDist && nearMissCooldown <= 0) {
+                    dangerLevel = Math.min(1, dangerLevel + clampedDt * 4);
+                    if (distCM < 50 && nearMissCooldown <= 0) {
+                        nearMissCooldown = 0.5;
+                        spawnParticles((cat.x + mouse.x) / 2, (cat.y + mouse.y) / 2, 15, '#ff6644', 4, 0.6, 4);
+                        sfxNearMiss();
+                        shakeAmount = Math.max(shakeAmount, (1 - distCM / nearMissDist) * 6);
+                    }
+                }
+
+                // Cat catches mouse
+                if (distCM < catchDist) {
+                    endGame();
+                    return;
+                }
+
+                // ── Cheese Collection ──────────────
+                for (let i = cheeses.length - 1; i >= 0; i--) {
+                    const ch = cheeses[i];
+                    const dch = Math.sqrt((mouse.x - ch.x) ** 2 + (mouse.y - ch.y) ** 2);
+                    if (dch < ch.radius + 14) {
+                        const bonus = 3;
+                        score += bonus;
+                        pulseScore();
+                        spawnParticles(ch.x, ch.y, 20, '#ffd700', 5, 0.8, 5);
+                        sfxCheese();
+                        showBonusPop(ch.x, ch.y - 20, '+' + bonus);
+                        // Brief speed boost for mouse
+                        mouseSpeedBoost = 180;
+                        mouseSpeedBoostTimer = 2.5;
+                        // Slow cat briefly
+                        catSpeedBoost = Math.max(catSpeedBoost, -120);
+                        setTimeout(() => { catSpeedBoost = Math.max(0, catSpeedBoost); }, 2000);
+                        cheeses.splice(i, 1);
+                    }
+                }
+
+                // ── Update particles & cheeses ─────
+                updateParticles(clampedDt);
+                updateCheeses(clampedDt);
+
+                // ── Update UI ──────────────────────
+                updateScoreUI();
+            }
+
+            function endGame() {
+                gameState = STATE.OVER;
+                spawnParticles(mouse.x, mouse.y, 50, '#ff3333', 8, 1.2, 6);
+                spawnParticles(mouse.x, mouse.y, 30, '#ffaa00', 6, 0.9, 4);
+                spawnParticles(cat.x, cat.y, 20, '#ffd700', 5, 0.7, 3);
+                sfxGameOver();
+                shakeAmount = 15;
+                const finalScore = Math.floor(score);
+                if (finalScore > highScore) {
+                    highScore = finalScore;
+                    try { localStorage.setItem('catMouseHighScore', highScore); } catch (e) {}
+                }
+                // Show overlay
+                overlay.classList.remove('hidden');
+                overlayEmoji.textContent = '😿';
+                overlayTitle.textContent = 'گربه موش رو گرفت!';
+                overlaySubtitle.textContent = 'بازی دوباره؟';
+                overlayBtn.textContent = '🔄 بازی دوباره';
+                overlayScore.style.display = 'block';
+                overlayScore.textContent = '⏱️ ' + finalScore + ' ثانیه';
+                overlayHighscore.style.display = 'block';
+                overlayHighscore.textContent = '🏆 بهترین: ' + highScore + ' ثانیه';
+                scoreDisplay.classList.remove('danger');
+                updateScoreUI();
+            }
+
+            function startGame() {
+                initAudio();
+                sfxStart();
+                resetPositions();
+                gameState = STATE.PLAYING;
+                score = 0;
+                gameTime = 0;
+                difficulty = 1;
+                updateScoreUI();
+                scoreDisplay.classList.remove('danger');
+                overlay.classList.add('hidden');
+                overlayScore.style.display = 'none';
+                overlayHighscore.style.display = 'none';
+                inputActive = false;
+                mouse.hasTarget = false;
+                mouse.targetX = mouse.x;
+                mouse.targetY = mouse.y;
+                // Spawn initial cheese
+                for (let i = 0; i < 2; i++) spawnCheese();
+            }
+
+            function resetToIdle() {
+                gameState = STATE.IDLE;
+                score = 0;
+                gameTime = 0;
+                difficulty = 1;
+                particles.length = 0;
+                cheeses.length = 0;
+                shakeAmount = 0;
+                dangerLevel = 0;
+                updateScoreUI();
+                scoreDisplay.classList.remove('danger');
+                overlay.classList.remove('hidden');
+                overlayEmoji.textContent = '🐱🐭';
+                overlayTitle.textContent = 'گربه و موش';
+                overlaySubtitle.textContent = 'موش رو با لمس صفحه از گربه فراری بده!';
+                overlayBtn.textContent = '🎮 شروع بازی';
+                overlayScore.style.display = 'none';
+                overlayHighscore.style.display = 'none';
+                resetPositions();
+            }
+
+            overlayBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (gameState === STATE.IDLE || gameState === STATE.OVER) {
+                    startGame();
+                }
+            });
+
+            // Prevent overlay click from propagating
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay && (gameState === STATE.IDLE || gameState === STATE.OVER)) {
+                    startGame();
+                }
+            });
+
+            // ─────────────────────────────────────
+            // Render
+            // ─────────────────────────────────────
+            function render() {
+                ctx.clearRect(0, 0, W, H);
+                // Apply shake
+                let sx = 0,
+                    sy = 0;
+                if (shakeAmount > 0.1) {
+                    sx = (Math.random() - 0.5) * shakeAmount * 2;
+                    sy = (Math.random() - 0.5) * shakeAmount * 2;
+                }
+                ctx.save();
+                ctx.translate(sx, sy);
+
+                drawBackground(ctx);
+
+                // Draw cheeses
+                for (const ch of cheeses) {
+                    drawCheese(ctx, ch);
+                }
+
+                // Draw danger zone indicator
+                if (dangerLevel > 0.3) {
+                    const alpha = dangerLevel * 0.25;
+                    const dangerGrad = ctx.createRadialGradient(cat.x, cat.y, 30, cat.x, cat.y, 90);
+                    dangerGrad.addColorStop(0, `rgba(255,30,0,${alpha})`);
+                    dangerGrad.addColorStop(1, 'rgba(255,30,0,0)');
+                    ctx.fillStyle = dangerGrad;
+                    ctx.beginPath();
+                    ctx.arc(cat.x, cat.y, 90, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // Draw cat
+                const catEyeGlow = dangerLevel;
+                drawCat(ctx, cat.x, cat.y, cat.angle, 1, catEyeGlow);
+
+                // Draw mouse
+                drawMouse(ctx, mouse.x, mouse.y, mouse.angle, 1);
+
+                // Draw particles
+                drawParticles(ctx);
+
+                // Danger vignette on screen edges
+                if (dangerLevel > 0.5) {
+                    const edgeAlpha = dangerLevel * 0.5;
+                    const edgeGrad = ctx.createRadialGradient(W / 2, H / 2, W * 0.4, W / 2, H / 2, W * 0.75);
+                    edgeGrad.addColorStop(0, 'rgba(255,0,0,0)');
+                    edgeGrad.addColorStop(1, `rgba(255,0,0,${edgeAlpha})`);
+                    ctx.fillStyle = edgeGrad;
+                    ctx.fillRect(-10, -10, W + 20, H + 20);
+                }
+
+                ctx.restore();
+
+                // Draw cursor hint on desktop
+                if (gameState === STATE.PLAYING && !inputActive && !('ontouchstart' in window)) {
+                    const cx = mouse.hasTarget ? mouse.targetX : mouse.x;
+                    const cy = (mouse.hasTarget ? mouse.targetY : mouse.y) + 35;
+                    ctx.save();
+                    ctx.globalAlpha = 0.5 + Math.sin(performance.now() * 0.005) * 0.3;
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([6, 4]);
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, 18, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                    ctx.fillStyle = '#fff';
+                    ctx.beginPath();
+                    ctx.arc(cx, cy - 16, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.moveTo(cx, cy - 16);
+                    ctx.lineTo(cx, cy - 6);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            }
+
+            // ─────────────────────────────────────
+            // Game Loop
+            // ─────────────────────────────────────
+            let lastTime = performance.now();
+
+            function gameLoop(timestamp) {
+                let dt = (timestamp - lastTime) / 1000;
+                if (dt <= 0) dt = 0.016;
+                if (dt > 0.2) dt = 0.2;
+                lastTime = timestamp;
+
+                resizeCanvas(); // Handle any resize
+                updateGame(dt);
+                render();
+                requestAnimationFrame(gameLoop);
+            }
+
+            // ─────────────────────────────────────
+            // Initialize
+            // ─────────────────────────────────────
+            function init() {
+                resizeCanvas();
+                resetPositions();
+                updateScoreUI();
+                scoreValueEl.textContent = '0';
+                overlay.classList.remove('hidden');
+                overlayEmoji.textContent = '🐱🐭';
+                overlayTitle.textContent = 'گربه و موش';
+                overlaySubtitle.textContent = 'موش رو با لمس صفحه از گربه فراری بده!';
+                overlayBtn.textContent = '🎮 شروع بازی';
+                overlayScore.style.display = 'none';
+                overlayHighscore.style.display = 'none';
+                gameState = STATE.IDLE;
+                lastTime = performance.now();
+                requestAnimationFrame(gameLoop);
+            }
+
+            // Prevent all default touch behaviors on body
+            document.body.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+            document.body.addEventListener('gesturestart', (e) => e.preventDefault());
+            document.body.addEventListener('gesturechange', (e) => e.preventDefault());
+            document.body.addEventListener('gestureend', (e) => e.preventDefault());
+
+            // Handle visibility change
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden && gameState === STATE.PLAYING) {
+                    lastTime = performance.now();
+                }
+            });
+
+            init();
+            console.log('🐱🐭 بازی گربه و موش آماده است!');
+            console.log('👆 با لمس صفحه یا کلیک ماوس، موش را کنترل کنید');
+            console.log('🧀 پنیرها را جمع کنید تا امتیاز اضافی بگیرید');
+            console.log('⏱️ امتیاز شما بر اساس ثانیه‌های زنده ماندن محاسبه می‌شود');
+            console.log('🏆 بهترین رکورد: ' + highScore + ' ثانیه');
+        })();
+    </script>
+</body>
+</html>
